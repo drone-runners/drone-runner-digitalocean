@@ -1,0 +1,8 @@
+---
+kind: pipeline
+type: digitalocean
+
+steps:
+ foo: bar
+
+...

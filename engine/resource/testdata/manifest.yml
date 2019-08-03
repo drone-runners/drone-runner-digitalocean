@@ -1,0 +1,53 @@
+---
+kind: signature
+hmac: a8842634682b78946a2
+
+---
+kind: secret
+type: encrypted
+name: token
+data: f0e4c2f76c58916ec25
+
+---
+kind: pipeline
+type: digitalocean
+name: default
+version: 1
+
+platform:
+  os: linux
+  arch: arm64
+
+workspace:
+  path: /drone/src
+
+clone:
+  depth: 50
+
+server:
+  image: docker-18-04
+  region: nyc1
+  size: s-1vcpu-1gb
+
+token:
+  from_secret: token
+
+steps:
+- name: build
+  shell: /bin/sh
+  detach: false
+  failure: never
+  commands:
+  - go build
+  - go test
+  environment:
+    GOOS: linux
+    GOARCH: arm64
+  depends_on: [ clone ]
+  when:
+    event: [ push ]
+
+trigger:
+  branch: [ master ]
+
+...

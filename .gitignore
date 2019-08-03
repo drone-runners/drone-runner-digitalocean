@@ -1,0 +1,5 @@
+drone-runner-digitalocean
+drone-runner-digitalocean.exe
+release/*
+.env
+NOTES*
