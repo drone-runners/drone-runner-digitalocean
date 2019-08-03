@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/drone-runners/drone-runner-digitalocean/internal/server"
 	"github.com/drone/runner-go/logger"
 
 	"github.com/pkg/sftp"
@@ -22,18 +23,43 @@ func New() Engine {
 	return new(engine)
 }
 
-type engine struct{
-	privatekey string
-	publickey  string
+type engine struct {
+	privatekey  string
+	publickey   string
+	fingerprint string
 }
 
 // Setup the pipeline environment.
 func (e *engine) Setup(ctx context.Context, spec *Spec) error {
-	// TODO provision the instance
-	// 1. make API request to upload global ssh key (once)
-	// 2. make API request to provision server
-	// 3. set server IP and ID in the spec
+	err := server.Register(ctx, server.RegisterArgs{
+		Fingerprint: e.fingerprint,
+		Name:        "drone_runner_key",
+		Data:        e.publickey,
+		Token:       spec.Token,
+	})
+	if err != nil {
+		return err
+	}
 
+	// provision the server instance.
+	instance, err := server.Provision(ctx, server.ProvisionArgs{
+		Key:    e.fingerprint,
+		Image:  spec.Server.Image,
+		Name:   spec.Server.Name,
+		Region: spec.Server.Region,
+		Size:   spec.Server.Size,
+		Token:  spec.Token,
+	})
+	if instance.ID > 0 {
+		spec.id = instance.ID
+		spec.ip = instance.IP
+	}
+	if err != nil {
+		return err
+	}
+
+	// establish an ssh connection with the server instance
+	// to setup the build environment (upload build scripts, etc)
 	client, err := dial(
 		spec.ip,
 		spec.Server.User,
@@ -100,51 +126,16 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 
 // Destroy the pipeline environment.
 func (e *engine) Destroy(ctx context.Context, spec *Spec) error {
-	// TODO terminate the instance
-
-	client, err := dial(
-		spec.ip,
-		spec.Server.User,
-		e.privatekey,
-	)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	ftp, err := sftp.NewClient(client)
-	if err != nil {
-		return err
-	}
-	defer ftp.Close()
-	if err = ftp.RemoveDirectory(spec.Root); err == nil {
+	// if the server was not successfully created
+	// exit since there is no droplet to delete.
+	if spec.id == 0 {
 		return nil
 	}
-
-	// ideally we would remove the directory using sftp, however,
-	// it consistnetly errors on linux and windows. We therefore
-	// fallback to executing ssh commands to remove the directory
-
-	logger.FromContext(ctx).
-		WithError(err).
-		WithField("path", spec.Root).
-		Trace("cannot remove workspace using sftp")
-
-	session, err := client.NewSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	err = session.Run(
-		removeCommand(spec.Platform.OS, spec.Root))
-	if err != nil {
-		logger.FromContext(ctx).
-			WithError(err).
-			WithField("path", spec.Root).
-			Warn("cannot remove workspace")
-	}
-	return err
+	return server.Destroy(ctx, server.DestroyArgs{
+		ID:    spec.id,
+		IP:    spec.ip,
+		Token: spec.Token,
+	})
 }
 
 // Run runs the pipeline step.

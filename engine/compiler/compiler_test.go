@@ -103,9 +103,9 @@ func TestCompile_Secrets(t *testing.T) {
 	compiler.Manifest = manifest
 	compiler.Pipeline = manifest.Resources[0].(*resource.Pipeline)
 	compiler.Secret = secret.StaticVars(map[string]string{
-		"token": "3DA541559918A808C2402BBA5012F6C60B27661C",
-		"password": "password",
-		"my_username":  "octocat",
+		"token":       "3DA541559918A808C2402BBA5012F6C60B27661C",
+		"password":    "password",
+		"my_username": "octocat",
 	})
 	ir := compiler.Compile(nocontext)
 	got := ir.Steps[0].Secrets
@@ -174,7 +174,8 @@ func testCompile(t *testing.T, source, golden string) *engine.Spec {
 	}
 
 	ignore := cmpopts.IgnoreFields(engine.Step{}, "Envs", "Secrets")
-	if diff := cmp.Diff(got, want, ignore); len(diff) != 0 {
+	unexported := cmpopts.IgnoreUnexported(engine.Spec{})
+	if diff := cmp.Diff(got, want, ignore, unexported); len(diff) != 0 {
 		t.Errorf(diff)
 	}
 

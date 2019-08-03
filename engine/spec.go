@@ -8,7 +8,7 @@ type (
 	// Spec provides the pipeline spec. This provides the
 	// required instructions for reproducable pipeline
 	// execution.
-	Spec struct { 
+	Spec struct {
 		Token    string   `json:"token,omitempty"`
 		Server   Server   `json:"server,omitempty"`
 		Platform Platform `json:"platform,omitempty"`
@@ -18,12 +18,13 @@ type (
 
 		// the engine sets these variables after having
 		// successfully provisioned an instance using the API
-		id string // ID of the provisioned instance.
+		id int    // ID of the provisioned instance.
 		ip string // IP of the provisioned instance.
 	}
 
 	// Server provides the secret configuration.
 	Server struct {
+		Name   string `json:"name,omitempty"`
 		Image  string `json:"image,omitempty"`
 		Region string `json:"region,omitempty"`
 		Size   string `json:"size,omitempty"`

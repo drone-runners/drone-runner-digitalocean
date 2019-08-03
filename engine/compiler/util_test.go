@@ -12,6 +12,7 @@ import (
 	"github.com/drone/runner-go/manifest"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func Test_isRunAlways(t *testing.T) {
@@ -81,7 +82,9 @@ func Test_configureSerial(t *testing.T) {
 		{Name: "deploy", DependsOn: []string{"test"}},
 	}
 	configureSerial(before)
-	if diff := cmp.Diff(before, after); diff != "" {
+
+	opts := cmpopts.IgnoreUnexported(engine.Spec{})
+	if diff := cmp.Diff(before, after, opts); diff != "" {
 		t.Errorf("Unexpected serial configuration")
 		t.Log(diff)
 	}
@@ -140,7 +143,9 @@ func Test_configureCloneDeps(t *testing.T) {
 		}},
 	}
 	configureCloneDeps(before)
-	if diff := cmp.Diff(before, after); diff != "" {
+
+	opts := cmpopts.IgnoreUnexported(engine.Spec{})
+	if diff := cmp.Diff(before, after, opts); diff != "" {
 		t.Errorf("Unexpected dependency adjustment")
 		t.Log(diff)
 	}
@@ -165,7 +170,9 @@ func Test_removeCloneDeps(t *testing.T) {
 		}},
 	}
 	removeCloneDeps(before)
-	if diff := cmp.Diff(before, after); diff != "" {
+
+	opts := cmpopts.IgnoreUnexported(engine.Spec{})
+	if diff := cmp.Diff(before, after, opts); diff != "" {
 		t.Errorf("Unexpected result after removing clone deps")
 		t.Log(diff)
 	}
@@ -184,7 +191,9 @@ func Test_removeCloneDeps_CloneEnabled(t *testing.T) {
 		{Name: "test", DependsOn: []string{"clone"}},
 	}
 	removeCloneDeps(before)
-	if diff := cmp.Diff(before, after); diff != "" {
+
+	opts := cmpopts.IgnoreUnexported(engine.Spec{})
+	if diff := cmp.Diff(before, after, opts); diff != "" {
 		t.Errorf("Expect clone dependencies not removed")
 		t.Log(diff)
 	}

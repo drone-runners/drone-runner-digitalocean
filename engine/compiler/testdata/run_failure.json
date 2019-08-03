@@ -2,6 +2,7 @@
   "platform": {},
   "token": "3DA541559918A808C2402BBA5012F6C60B27661C",
   "server": {
+    "name": "drone-temp-random",
     "image": "docker-18-04",
     "region": "nyc1",
     "size": "s-1vcpu-1gb"

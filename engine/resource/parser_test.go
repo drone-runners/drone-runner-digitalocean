@@ -35,7 +35,7 @@ func TestParse(t *testing.T) {
 			Type:    "digitalocean",
 			Name:    "default",
 			Version: "1",
-			Token: manifest.Variable{Secret: "token"},
+			Token:   manifest.Variable{Secret: "token"},
 			Server: Server{
 				Image:  "docker-18-04",
 				Region: "nyc1",

@@ -84,6 +84,7 @@ func (c *Compiler) Compile(ctx context.Context) *engine.Spec {
 			Version: c.Pipeline.Platform.Version,
 		},
 		Server: engine.Server{
+			Name:   fmt.Sprintf("drone-temp-%s", random()),
 			Image:  c.Pipeline.Server.Image,
 			Region: c.Pipeline.Server.Region,
 			Size:   c.Pipeline.Server.Size,
