@@ -88,7 +88,15 @@ func (c *Compiler) Compile(ctx context.Context) *engine.Spec {
 			Image:  c.Pipeline.Server.Image,
 			Region: c.Pipeline.Server.Region,
 			Size:   c.Pipeline.Server.Size,
+			User:   c.Pipeline.Server.User,
 		},
+	}
+
+	switch {
+	case spec.Server.User == "" && spec.Platform.OS == "windows":
+		spec.Server.User = "Administrator"
+	case spec.Server.User == "":
+		spec.Server.User = "root"
 	}
 
 	// maybe load the digital ocean api token from secret

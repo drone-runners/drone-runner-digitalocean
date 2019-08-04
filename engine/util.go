@@ -7,7 +7,19 @@ package engine
 import (
 	"fmt"
 	"io"
+
+	"golang.org/x/crypto/ssh"
 )
+
+// helper function calculates and returns the md5 fingerprint
+// of the public ssh key.
+func calcFingerprint(b []byte) (string, error) {
+    key, _, _, _, err := ssh.ParseAuthorizedKey(b)
+    if err != nil {
+        return "", err
+    }
+    return ssh.FingerprintLegacyMD5(key), nil
+}
 
 // helper function writes a shell command to the io.Writer that
 // changes the current working directory.

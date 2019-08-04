@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -19,8 +20,24 @@ import (
 )
 
 // New returns a new engine.
-func New() Engine {
-	return new(engine)
+func New(publickeyFile, privatekeyFile string) (Engine, error) {
+	publickey, err := ioutil.ReadFile(publickeyFile)
+	if err != nil {
+		return nil, err
+	}
+	privatekey, err := ioutil.ReadFile(privatekeyFile)
+	if err != nil {
+		return nil, err
+	}
+	fingerprint, err := calcFingerprint(publickey)
+	if err != nil {
+		return nil, err
+	}
+	return &engine{
+		publickey:   string(publickey),
+		privatekey:  string(privatekey),
+		fingerprint: fingerprint,
+	}, err
 }
 
 type engine struct {
@@ -58,6 +75,13 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 		return err
 	}
 
+	logger.FromContext(ctx).
+		WithField("hostname", spec.Server.Name).
+		WithField("user", spec.Server.User).
+		WithField("ip", instance.IP).
+		WithField("id", instance.ID).
+		Debug("dial the server")
+
 	// establish an ssh connection with the server instance
 	// to setup the build environment (upload build scripts, etc)
 	client, err := dial(
@@ -66,12 +90,25 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 		e.privatekey,
 	)
 	if err != nil {
+		logger.FromContext(ctx).
+			WithError(err).
+			WithField("hostname", spec.Server.Name).
+			WithField("user", spec.Server.User).
+			WithField("ip", instance.IP).
+			WithField("id", instance.ID).
+			Debug("failed to dial server")
 		return err
 	}
 	defer client.Close()
 
 	clientftp, err := sftp.NewClient(client)
 	if err != nil {
+		logger.FromContext(ctx).
+			WithError(err).
+			WithField("hostname", spec.Server.Name).
+			WithField("ip", instance.IP).
+			WithField("id", instance.ID).
+			Debug("failed to create sftp client")
 		return err
 	}
 	defer clientftp.Close()
@@ -121,6 +158,11 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 		}
 	}
 
+	logger.FromContext(ctx).
+		WithField("hostname", spec.Server.Name).
+		WithField("ip", instance.IP).
+		WithField("id", instance.ID).
+		Debug("server configuration complete")
 	return nil
 }
 
@@ -131,6 +173,11 @@ func (e *engine) Destroy(ctx context.Context, spec *Spec) error {
 	if spec.id == 0 {
 		return nil
 	}
+	logger.FromContext(ctx).
+		WithField("hostname", spec.Server.Name).
+		WithField("ip", spec.ip).
+		WithField("id", spec.id).
+		Debug("terminating server")
 	return server.Destroy(ctx, server.DestroyArgs{
 		ID:    spec.id,
 		IP:    spec.ip,
@@ -228,6 +275,9 @@ func (e *engine) Run(ctx context.Context, spec *Spec, step *Step, output io.Writ
 
 // helper function configures and dials the ssh server.
 func dial(server, username, privatekey string) (*ssh.Client, error) {
+	if !strings.HasSuffix(server, ":22") {
+		server = server + ":22"
+	}
 	config := &ssh.ClientConfig{
 		User:            username,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),

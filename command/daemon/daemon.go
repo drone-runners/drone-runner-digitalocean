@@ -65,7 +65,11 @@ func (c *daemonCommand) run(*kingpin.ParseContext) error {
 		),
 	)
 
-	engine := engine.New()
+	engine, err := engine.New(config.Keypair.Public, config.Keypair.Private)
+	if err != nil {
+		return err
+	}
+
 	remote := remote.New(cli)
 	tracer := history.New(remote)
 	hook := loghistory.New()

@@ -5,7 +5,8 @@
     "name": "drone-temp-random",
     "image": "docker-18-04",
     "region": "nyc1",
-    "size": "s-1vcpu-1gb"
+    "size": "s-1vcpu-1gb",
+    "user": "root"
   },
   "root": "/tmp/drone-random",
   "files": [

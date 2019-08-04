@@ -101,7 +101,7 @@ poller:
 
 			return res, ctx.Err()
 		case <-time.After(interval):
-			interval = time.Minute
+			interval = time.Second * 30
 
 			logger.WithField("name", req.Name).
 				Debug("find instance network")

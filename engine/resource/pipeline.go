@@ -43,6 +43,7 @@ type (
 		Image  string `json:"image,omitempty"`
 		Region string `json:"region,omitempty"`
 		Size   string `json:"size,omitempty"`
+		User   string `json:"user,omitempty`
 	}
 
 	// Step defines a Pipeline step.

@@ -6,6 +6,7 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -35,11 +36,16 @@ import (
 type execCommand struct {
 	*internal.Flags
 
-	Source  *os.File
-	Environ map[string]string
-	Secrets map[string]string
-	Pretty  bool
-	Procs   int64
+	Source     *os.File
+	Environ    map[string]string
+	Secrets    map[string]string
+	Pretty     bool
+	Procs      int64
+	Debug      bool
+	Trace      bool
+	Dump       bool
+	PublicKey  string
+	PrivateKey string
 }
 
 func (c *execCommand) run(*kingpin.ParseContext) error {
@@ -138,18 +144,33 @@ func (c *execCommand) run(*kingpin.ParseContext) error {
 
 	// enable debug logging
 	logrus.SetLevel(logrus.WarnLevel)
+	if c.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+	if c.Trace {
+		logrus.SetLevel(logrus.TraceLevel)
+	}
 	logger.Default = logger.Logrus(
 		logrus.NewEntry(
 			logrus.StandardLogger(),
 		),
 	)
 
+	engine, err := engine.New(c.PublicKey, c.PrivateKey)
+	if err != nil {
+		return err
+	}
+
 	err = runtime.NewExecer(
 		pipeline.NopReporter(),
 		console.New(c.Pretty),
-		engine.New(),
+		engine,
 		c.Procs,
 	).Exec(ctx, spec, state)
+
+	if c.Dump {
+		dump(state)
+	}
 	if err != nil {
 		return err
 	}
@@ -158,6 +179,12 @@ func (c *execCommand) run(*kingpin.ParseContext) error {
 		os.Exit(1)
 	}
 	return nil
+}
+
+func dump(v interface{}) {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	enc.Encode(v)
 }
 
 func registerExec(app *kingpin.Application) {
@@ -177,6 +204,21 @@ func registerExec(app *kingpin.Application) {
 
 	cmd.Flag("environ", "environment variables").
 		StringMapVar(&c.Environ)
+	
+	cmd.Flag("public-key", "public key file path").
+		ExistingFileVar(&c.PublicKey)
+
+	cmd.Flag("private-key", "private key file path").
+		ExistingFileVar(&c.PrivateKey)
+
+	cmd.Flag("debug", "enable debug logging").
+		BoolVar(&c.Debug)
+
+	cmd.Flag("debug", "enable trace logging").
+		BoolVar(&c.Trace)
+
+	cmd.Flag("dump", "dump the pipeline state to stdout").
+		BoolVar(&c.Dump)
 
 	cmd.Flag("pretty", "pretty print the output").
 		Default(
