@@ -204,7 +204,7 @@ func registerExec(app *kingpin.Application) {
 
 	cmd.Flag("environ", "environment variables").
 		StringMapVar(&c.Environ)
-	
+
 	cmd.Flag("public-key", "public key file path").
 		ExistingFileVar(&c.PublicKey)
 

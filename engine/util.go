@@ -7,6 +7,7 @@ package engine
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -14,11 +15,11 @@ import (
 // helper function calculates and returns the md5 fingerprint
 // of the public ssh key.
 func calcFingerprint(b []byte) (string, error) {
-    key, _, _, _, err := ssh.ParseAuthorizedKey(b)
-    if err != nil {
-        return "", err
-    }
-    return ssh.FingerprintLegacyMD5(key), nil
+	key, _, _, _, err := ssh.ParseAuthorizedKey(b)
+	if err != nil {
+		return "", err
+	}
+	return ssh.FingerprintLegacyMD5(key), nil
 }
 
 // helper function writes a shell command to the io.Writer that
@@ -39,8 +40,13 @@ func writeSecrets(w io.Writer, os string, secrets []*Secret) {
 // helper function writes a shell command to the io.Writer that
 // exports the key value pairs as environment variables.
 func writeEnviron(w io.Writer, os string, envs map[string]string) {
-	for k, v := range envs {
-		writeEnv(w, os, k, v)
+	var keys []string
+	for k := range envs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		writeEnv(w, os, k, envs[k])
 	}
 }
 
