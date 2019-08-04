@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/drone-runners/drone-runner-digitalocean/internal/server"
+	"github.com/drone-runners/drone-runner-digitalocean/internal/platform"
 	"github.com/drone/runner-go/logger"
 
 	"github.com/pkg/sftp"
@@ -48,7 +48,7 @@ type engine struct {
 
 // Setup the pipeline environment.
 func (e *engine) Setup(ctx context.Context, spec *Spec) error {
-	err := server.Register(ctx, server.RegisterArgs{
+	err := platform.RegisterKey(ctx, platform.RegisterArgs{
 		Fingerprint: e.fingerprint,
 		Name:        "drone_runner_key",
 		Data:        e.publickey,
@@ -59,7 +59,7 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 	}
 
 	// provision the server instance.
-	instance, err := server.Provision(ctx, server.ProvisionArgs{
+	instance, err := platform.Provision(ctx, platform.ProvisionArgs{
 		Key:    e.fingerprint,
 		Image:  spec.Server.Image,
 		Name:   spec.Server.Name,
@@ -178,7 +178,7 @@ func (e *engine) Destroy(ctx context.Context, spec *Spec) error {
 		WithField("ip", spec.ip).
 		WithField("id", spec.id).
 		Debug("terminating server")
-	return server.Destroy(ctx, server.DestroyArgs{
+	return platform.Destroy(ctx, platform.DestroyArgs{
 		ID:    spec.id,
 		IP:    spec.ip,
 		Token: spec.Token,

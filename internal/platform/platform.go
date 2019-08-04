@@ -2,9 +2,9 @@
 // Use of this source code is governed by the Polyform License
 // that can be found in the LICENSE file.
 
-// Package server contains code to provision and destroy server
-// instances on Digital Ocean.
-package server
+// Package platform contains code to provision and destroy server
+// instances on the Digital Ocean cloud platform.
+package platform
 
 import (
 	"context"
@@ -147,11 +147,9 @@ func Destroy(ctx context.Context, args DestroyArgs) error {
 	return err
 }
 
-// Register the ssh public key with the account if it is not
-// already registered. The user will see a new entry in their
-// Digital Ocean account and will receive a security email from
-// Digital Ocean when added.
-func Register(ctx context.Context, args RegisterArgs) error {
+// RegisterKey registers the ssh public key with the account if
+// it is not already registered.
+func RegisterKey(ctx context.Context, args RegisterArgs) error {
 	client := newClient(ctx, args.Token)
 	_, _, err := client.Keys.GetByFingerprint(ctx, args.Fingerprint)
 	if err == nil {
