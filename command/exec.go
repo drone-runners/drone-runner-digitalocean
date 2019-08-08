@@ -214,7 +214,7 @@ func registerExec(app *kingpin.Application) {
 	cmd.Flag("debug", "enable debug logging").
 		BoolVar(&c.Debug)
 
-	cmd.Flag("debug", "enable trace logging").
+	cmd.Flag("trace", "enable trace logging").
 		BoolVar(&c.Trace)
 
 	cmd.Flag("dump", "dump the pipeline state to stdout").
