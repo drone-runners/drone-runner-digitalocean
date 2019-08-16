@@ -1,4 +1,4 @@
-baseURL: https://drone-runner-digitalocean.netlify.com
+baseURL: https://digitalocean-runner.docs.drone.io/
 languageCode: en-us
 title: Drone Digital Ocean Runner
 theme: drone-hugo-theme
