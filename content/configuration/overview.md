@@ -33,11 +33,11 @@ The kind and type attributes define a digitalocean pipeline.
 
 {{< highlight text "linenos=table" >}}
 ---
-kind: pipline
+kind: pipeline
 type: digitalocean
 {{< / highlight >}}
 
-The steps section defines a series of shell commands. These commands are executed on the remote digital ocean droplet. If any command returns a non-zero exit code, the pipeline fails and exits.
+The `steps` section defines a series of shell commands. These commands are executed on the remote digital ocean droplet. If any command returns a non-zero exit code, the pipeline fails and exits.
 
 {{< highlight text "linenos=table,linenostart=9" >}}
 steps:
