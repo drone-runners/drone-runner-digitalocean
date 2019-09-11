@@ -32,15 +32,25 @@ The runner is configured using environment variables. This article references th
 `DRONE_RPC_SECRET`
 : provides the shared secret used to authenticate with your Drone server. This must match the secret defined in your Drone server configuration.
 
+`DRONE_PUBLIC_KEY_FILE`
+: provides the public key used for remote ssh access to the machine. This public key must also be added to your digital ocean account.
+
+`DRONE_PRIVATE_KEY_FILE`
+: provides the private key used for remote ssh access to the machine.
+
 # Step 3 - Install
 
 The below command creates the a container and start the runner. _Remember to replace the environment variables below with your Drone server details._
 
 ```
 $ docker run -d \
+  -v /path/on/host/id_rsa:/path/in/container/id_rsa \
+  -v /path/on/host/id_rsa.pub:/path/in/container/id_rsa.pub \
   -e DRONE_RPC_PROTO=https \
   -e DRONE_RPC_HOST=drone.company.com \
   -e DRONE_RPC_SECRET=super-duper-secret \
+  -e DRONE_PUBLIC_KEY_FILE=/path/in/container/id_rsa.pub \
+  -e DRONE_PRIVATE_KEY_FILE=/path/in/container/id_rsa \
   -p 3000:3000 \
   --restart always \
   --name runner \
