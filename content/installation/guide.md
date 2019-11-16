@@ -19,7 +19,11 @@ Install Docker and pull the public image:
 $ docker pull drone/drone-runner-digitalocean
 ```
 
-# Step 2 - Configure
+# Step 2 - Upload Keys
+
+Create an ssh keypair and add to Digital Ocean. The runner will use the ssh key for remote authentication and access to your droplets.
+
+# Step 3 - Configure
 
 The runner is configured using environment variables. This article references the below configuration options. See [Configuration]({{< relref "reference" >}}) for a complete list of configuration options.
 
@@ -38,7 +42,7 @@ The runner is configured using environment variables. This article references th
 `DRONE_PRIVATE_KEY_FILE`
 : provides the private key used for remote ssh access to the machine.
 
-# Step 3 - Install
+# Step 4 - Install
 
 The below command creates the a container and start the runner. _Remember to replace the environment variables below with your Drone server details._
 
@@ -57,7 +61,7 @@ $ docker run -d \
   drone/drone-runner-digitalocean
 ```
 
-# Step 4 - Verify
+# Step 5 - Verify
 
 Use the `docker logs` command to view the logs and verify the runner successfully established a connection with the Drone server.
 
