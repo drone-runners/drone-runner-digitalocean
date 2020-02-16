@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/drone-runners/drone-runner-digitalocean/internal/platform"
 	"github.com/drone/runner-go/logger"
@@ -75,31 +76,47 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 		return err
 	}
 
-	logger.FromContext(ctx).
-		WithField("hostname", spec.Server.Name).
-		WithField("user", spec.Server.User).
-		WithField("ip", instance.IP).
-		WithField("id", instance.ID).
-		Debug("dial the server")
-
 	// establish an ssh connection with the server instance
 	// to setup the build environment (upload build scripts, etc)
-	client, err := dial(
-		spec.ip,
-		spec.Server.User,
-		e.privatekey,
-	)
-	if err != nil {
-		logger.FromContext(ctx).
-			WithError(err).
+
+	var client *ssh.Client
+
+	// provisioning can be reported complete before sshd is ready to receive connections, lets try a few times
+	// to give the server chance to finish booting
+
+	attempts := 4
+	sleep := 10 * time.Second
+
+	for i := 0; i < attempts; i++ {
+
+		log := logger.FromContext(ctx).
 			WithField("hostname", spec.Server.Name).
 			WithField("user", spec.Server.User).
 			WithField("ip", instance.IP).
 			WithField("id", instance.ID).
-			Debug("failed to dial server")
-		return err
+			WithField("attempt", i + 1)
+
+		log.Debug("dial the server")
+
+		client, err = dial(
+			spec.ip,
+			spec.Server.User,
+			e.privatekey,
+		)
+
+		if err != nil {
+			if i < attempts - 1 {
+				log.Debug("failed to dial server, retrying...")
+				time.Sleep(sleep)
+			} else {
+				log.Error("failed to dial server")
+				return err
+			}
+		} else {
+			defer client.Close()
+			break
+		}
 	}
-	defer client.Close()
 
 	clientftp, err := sftp.NewClient(client)
 	if err != nil {
