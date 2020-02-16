@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/drone-runners/drone-runner-digitalocean/internal/platform"
 	"github.com/drone/runner-go/logger"
@@ -75,31 +76,18 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 		return err
 	}
 
-	logger.FromContext(ctx).
-		WithField("hostname", spec.Server.Name).
-		WithField("user", spec.Server.User).
-		WithField("ip", instance.IP).
-		WithField("id", instance.ID).
-		Debug("dial the server")
-
 	// establish an ssh connection with the server instance
 	// to setup the build environment (upload build scripts, etc)
-	client, err := dial(
+
+	client, err := retryDial(
+		ctx,
 		spec.ip,
 		spec.Server.User,
 		e.privatekey,
 	)
 	if err != nil {
-		logger.FromContext(ctx).
-			WithError(err).
-			WithField("hostname", spec.Server.Name).
-			WithField("user", spec.Server.User).
-			WithField("ip", instance.IP).
-			WithField("id", instance.ID).
-			Debug("failed to dial server")
 		return err
 	}
-	defer client.Close()
 
 	clientftp, err := sftp.NewClient(client)
 	if err != nil {
@@ -187,6 +175,8 @@ func (e *engine) Destroy(ctx context.Context, spec *Spec) error {
 
 // Run runs the pipeline step.
 func (e *engine) Run(ctx context.Context, spec *Spec, step *Step, output io.Writer) (*State, error) {
+	// we should not need retryDial here, since we've already confirmed we
+	// can connect via the Setup method.
 	client, err := dial(
 		spec.ip,
 		spec.Server.User,
@@ -289,6 +279,31 @@ func dial(server, username, privatekey string) (*ssh.Client, error) {
 	}
 	config.Auth = append(config.Auth, ssh.PublicKeys(signer))
 	return ssh.Dial("tcp", server, config)
+}
+
+// helper function configures and dials the ssh server and retries if there is
+// an error connecting.
+func retryDial(ctx context.Context, server, username, privatekey string) (*ssh.Client, error) {
+	var client *ssh.Client
+	var err error
+	for i := 0; ; i++ {
+		logger.FromContext(ctx).
+			WithField("host", server).
+			WithField("user", username).
+			WithField("attempt", i+1).
+			Debug("dialing")
+		client, err = dial(server, username, privatekey)
+		if err == nil || i == 5 {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			// we've been cancelled
+			return nil, ctx.Err()
+		case <-time.After(time.Second * 10):
+		}
+	}
+	return client, err
 }
 
 // helper function writes the file to the remote server and then
