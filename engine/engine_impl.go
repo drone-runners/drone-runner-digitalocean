@@ -20,6 +20,16 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+const (
+	// the time to wait for ssh connections to be established on a single
+	// ssh connection attempt.
+	sshDialTimeout = time.Second * 10
+
+	// the time to wait for our overall setup routine to connect to a recently
+	// launched droplet.
+	networkTimeout = time.Minute * 10
+)
+
 // New returns a new engine.
 func New(publickeyFile, privatekeyFile string) (Engine, error) {
 	publickey, err := ioutil.ReadFile(publickeyFile)
@@ -79,7 +89,7 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 	// establish an ssh connection with the server instance
 	// to setup the build environment (upload build scripts, etc)
 
-	client, err := retryDial(
+	client, err := dialRetry(
 		ctx,
 		spec.ip,
 		spec.Server.User,
@@ -88,6 +98,7 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	clientftp, err := sftp.NewClient(client)
 	if err != nil {
@@ -99,7 +110,9 @@ func (e *engine) Setup(ctx context.Context, spec *Spec) error {
 			Debug("failed to create sftp client")
 		return err
 	}
-	defer clientftp.Close()
+	if clientftp != nil {
+		defer clientftp.Close()
+	}
 
 	// the pipeline workspace is created before pipeline
 	// execution begins. All files and folders created during
@@ -175,7 +188,7 @@ func (e *engine) Destroy(ctx context.Context, spec *Spec) error {
 
 // Run runs the pipeline step.
 func (e *engine) Run(ctx context.Context, spec *Spec, step *Step, output io.Writer) (*State, error) {
-	// we should not need retryDial here, since we've already confirmed we
+	// we should not need dialRetry here, since we've already confirmed we
 	// can connect via the Setup method.
 	client, err := dial(
 		spec.ip,
@@ -283,24 +296,50 @@ func dial(server, username, privatekey string) (*ssh.Client, error) {
 
 // helper function configures and dials the ssh server and retries if there is
 // an error connecting.
-func retryDial(ctx context.Context, server, username, privatekey string) (*ssh.Client, error) {
-	var client *ssh.Client
+func dialRetry(ctx context.Context, server, username, privatekey string) (*ssh.Client, error) {
 	var err error
-	for i := 0; ; i++ {
+	var client *ssh.Client
+	client, err = dial(server, username, privatekey)
+	if err == nil {
+		return client, nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, networkTimeout)
+	defer cancel()
+
+	for i := 1; ; i++ {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
 		logger.FromContext(ctx).
 			WithField("host", server).
 			WithField("user", username).
-			WithField("attempt", i+1).
-			Debug("dialing")
+			WithField("retry_attempt", i).
+			Debug("dialing the vm")
+
 		client, err = dial(server, username, privatekey)
-		if err == nil || i == 5 {
-			break
+		if err == nil {
+			return client, nil
 		}
+
+		logger.FromContext(ctx).
+			WithError(err).
+			WithField("ip", server).
+			WithField("retry_attempt", i).
+			Trace("failed to re-dial vm")
+
+		if client != nil {
+			client.Close()
+		}
+
 		select {
 		case <-ctx.Done():
 			// we've been cancelled
 			return nil, ctx.Err()
 		case <-time.After(time.Second * 10):
+			// waiting 10 seconds before retry
 		}
 	}
 	return client, err
