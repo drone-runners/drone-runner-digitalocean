@@ -5,7 +5,7 @@
 
 3. Build executables
 
-    sh scripts/build_all.sh
+    sh scripts/build.sh
 
 4. Build images
 
