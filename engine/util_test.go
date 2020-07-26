@@ -6,6 +6,7 @@ package engine
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 )
 
@@ -43,7 +44,7 @@ func TestWriteSecrets(t *testing.T) {
 	sec := []*Secret{{Env: "a", Data: []byte("b")}}
 	writeSecrets(buf, "linux", sec)
 
-	want := "export a=\"b\"\n"
+	want := fmt.Sprintf("export a='b'\n")
 	if got := buf.String(); got != want {
 		t.Errorf("Want secret script %q, got %q", want, got)
 	}
@@ -61,7 +62,7 @@ func TestWriteEnv(t *testing.T) {
 	env := map[string]string{"a": "b", "c": "d"}
 	writeEnviron(buf, "linux", env)
 
-	want := "export a=\"b\"\nexport c=\"d\"\n"
+	want := fmt.Sprintf("export a='b'\nexport c='d'\n")
 	if got := buf.String(); got != want {
 		t.Errorf("Want environment script %q, got %q", want, got)
 	}

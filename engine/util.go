@@ -58,7 +58,7 @@ func writeEnv(w io.Writer, os, key, value string) {
 		fmt.Fprintf(w, "$Env:%s = %q", key, value)
 		fmt.Fprintln(w)
 	default:
-		fmt.Fprintf(w, "export %s=%q", key, value)
+		fmt.Fprintf(w, "export %s='%s'", key, value)
 		fmt.Fprintln(w)
 	}
 }
